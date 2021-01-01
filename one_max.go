@@ -1,6 +1,7 @@
 package main
 
 import (
+  "os"
   "time"
   "strings"
   "fmt"
@@ -10,14 +11,30 @@ import (
 )
 
 var (
-  population_size int = 10
+  population_size int = 30
   gene_number int = 50
   population []string
-  k = 3                     // Tournament size (number of participants)
+  k = 3 // Tournament size (number of participants)
   crossover_rate float64 = 0.7
   mutation_rate float64 = 0.005
-  generations int = 100
+  generations int = 30
 )
+
+
+// ------------------- Validate Parameters -------------------- //
+func validate_parameters() {
+  // Minimal Population Size size accepted is 2
+  if population_size % 2 == 1 {
+    fmt.Printf("\nPopulation size should be ODD numbers. Exiting\n")
+    os.Exit(2)
+  }
+
+  // Population Size should be positive
+  if population_size <= 0 {
+    fmt.Printf("\nPopulation size should be Positive. Exiting\n")
+    os.Exit(2)
+  }
+}
 
 
 // ------------------- Generate Individuals ------------------- //
@@ -104,7 +121,6 @@ func generate_children(parents []string, pop_size int) []string {
   var (
     father1, father2, child1, child2 string
     pop_new []string
-
   )
 
   fmt.Printf("\nSelected parents:\n")
@@ -118,7 +134,6 @@ func generate_children(parents []string, pop_size int) []string {
     father2 = parents[randomIndex]
 
     fmt.Printf("%d) %s with %s\n", i, father1, father2)
-
 
     // Define if will have crossover (the parents will be copied to next generation)
     if rand.Float64() < crossover_rate {
@@ -183,10 +198,6 @@ func generate_mutation(new_pop []string, pop_size int, gene_number int, mutation
     // For each gene, check for mutations
     for gene := 0 ; gene < gene_number ; gene ++ {
 
-
-      // TALVEZ RECEBER O INDIVIDUAL AQUI E ALTETAR
-
-
       // Check if there is a mutation
       if mutation_rate >= rand.Float64() {
 
@@ -231,7 +242,7 @@ func best_individual() (string, int) {
   bigger := score[0]
   winner := population[0]
 
-  for i := 0 ; i < k ; i++ {
+  for i := 0 ; i < len(score) ; i++ {
     if score[i] > bigger {
       bigger = score[i]
       winner = population[i]
@@ -244,6 +255,9 @@ func best_individual() (string, int) {
 
 
 func main() {
+
+  // Validate parameters
+  validate_parameters()
 
   // 0 - Generate the population
   generate_population(population_size, gene_number)
