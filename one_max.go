@@ -4,6 +4,7 @@ import (
   "os"
   "time"
   "strings"
+  "sort"
   "fmt"
   "math/rand"
   "strconv"
@@ -11,13 +12,14 @@ import (
 )
 
 var (
-  population_size int = 30
-  gene_number int = 50
+  population_size int = 20
+  gene_number int = 5
   population []string
   k = 3 // Tournament size (number of participants)
   crossover_rate float64 = 0.7
   mutation_rate float64 = 0.005
-  generations int = 30
+  generations int = 2
+  elitism_individuals int = (10 * population_size) / 100  // 10% of population size
 )
 
 
@@ -65,12 +67,43 @@ func generate_population(population_size int, gene_number int) {
 }
 
 
-// ------------------- Generate Evaluation -------------------- //
-func fitness(individual string) int {
+// --------- Generate the Evaluation of an Individual --------- //
+func fitness_individual(individual string) int {
   ones := regexp.MustCompile("1")
   matches := ones.FindAllStringIndex(individual, -1)
 
   return len(matches)
+}
+
+
+// --------- Generate the Evaluation of a Population ---------- //
+func fitness_population(pop []string) []int {
+
+  var score []int
+
+  for i := 0 ; i < len(pop) ; i++ {
+    score = append( score, fitness_individual(pop[i]) )
+  }
+
+  return score
+}
+
+
+// ------------------------- Elitism -------------------------- //
+func elitism(pop []string, pop_score []int, pop_size int, elitism_number int) []string {
+  var elite, tmp []string
+
+  for i := 0 ; i < pop_size ; i++ {
+    tmp = append( tmp, strconv.Itoa(pop_score[i]) + "," + pop[i] )
+  }
+
+  sort.Strings(tmp)
+
+  for i := pop_size -1 ; i > ( pop_size -1 )- elitism_number ; i-- {
+    elite = append(elite, tmp[i])
+  }
+
+  return elite
 }
 
 
@@ -92,7 +125,7 @@ func define_parents(pop []string, pop_size int, k int) []string {
 
     // Calculate the score of K competitors
     for i := 0 ; i < k ; i++ {
-      score = append( score, fitness(competitors[i]) )
+      score = append( score, fitness_individual(competitors[i]) )
     }
 
     bigger := score[0]
@@ -107,7 +140,7 @@ func define_parents(pop []string, pop_size int, k int) []string {
 
     parents = append(parents, winner)
 
-    fmt.Printf("Tournament: %d\t Competitors: %s\t Scores: %d\t Winner: %s (%d)\n", tournament, competitors, score, winner, bigger)
+    fmt.Printf("\tTournament: %d\t Competitors: %s\t Scores: %d\t Winner: %s (%d)\n", tournament, competitors, score, winner, bigger)
 
   }
 
@@ -123,7 +156,7 @@ func generate_children(parents []string, pop_size int) []string {
     pop_new []string
   )
 
-  fmt.Printf("\nSelected parents:\n")
+  fmt.Printf("\n\tSelected parents:\n")
 
   for i := 0 ; i < pop_size / 2 ; i++ {
     // Define the couples
@@ -133,14 +166,14 @@ func generate_children(parents []string, pop_size int) []string {
     randomIndex = rand.Intn(len(parents))
     father2 = parents[randomIndex]
 
-    fmt.Printf("%d) %s with %s\n", i, father1, father2)
+    fmt.Printf("\t%d) %s with %s\n", i, father1, father2)
 
     // Define if will have crossover (the parents will be copied to next generation)
     if rand.Float64() < crossover_rate {
 
       // Define the cut-point
       cut_point := rand.Intn(gene_number -1) + 1
-      fmt.Printf("\tCut-point: %d\n",cut_point)
+      fmt.Printf("\t\tCut-point: %d\n",cut_point)
 
       // Split father's values
       // Father1
@@ -156,24 +189,24 @@ func generate_children(parents []string, pop_size int) []string {
       child1_p1 := strings.Join(father1_split_p1,"")
       child1_p2 := strings.Join(father2_split_p2,"")
       child1 = child1_p1 + child1_p2
-      fmt.Printf("\tChild1: %s + %s: %s\n", child1_p1, child1_p2, child1)
+      fmt.Printf("\t\tChild1: %s + %s: %s\n", child1_p1, child1_p2, child1)
 
       // Child2
       child2_p1 := strings.Join(father2_split_p1,"")
       child2_p2 := strings.Join(father1_split_p2,"")
       child2 = child2_p1 + child2_p2
-      fmt.Printf("\tChild2: %s + %s: %s\n", child2_p1, child2_p2, child2)
+      fmt.Printf("\t\tChild2: %s + %s: %s\n", child2_p1, child2_p2, child2)
 
       // Put the childs in the new generation
       pop_new = append(pop_new, child1)
       pop_new = append(pop_new, child2)
 
     } else {
-      fmt.Printf("\tCrossover:\n")
+      fmt.Printf("\t\tCrossover:\n")
       pop_new = append(pop_new, father1)
       pop_new = append(pop_new, father2)
-      fmt.Printf("\tChild1 (Father1): %s\n", father1)
-      fmt.Printf("\tChild2 (Father2): %s\n", father2)
+      fmt.Printf("\t\tChild1 (Father1): %s\n", father1)
+      fmt.Printf("\t\tChild2 (Father2): %s\n", father2)
     }
 
   }
@@ -214,7 +247,7 @@ func generate_mutation(new_pop []string, pop_size int, gene_number int, mutation
         // Update the mutated individual
         individual = strings.Join(individual_split,"")
 
-        fmt.Printf("Individual #%d (%s) mutated on gene %d. New Individual: %s \n", i, new_pop[i], gene, individual)
+        fmt.Printf("\tIndividual #%d (%s) mutated on gene %d. New Individual: %s \n", i, new_pop[i], gene, individual)
 
       }
 
@@ -235,9 +268,7 @@ func best_individual() (string, int) {
   var score []int
 
   // Calculate the score of the latest population
-  for i := 0 ; i < len(population) ; i++ {
-    score = append( score, fitness(population[i]) )
-  }
+  score = fitness_population(population)
 
   bigger := score[0]
   winner := population[0]
@@ -270,33 +301,42 @@ func main() {
 
     // 1 - Evaluation
     fmt.Printf("1 - Evaluation:\n")
+    population_score := fitness_population(population)
     for i := 0 ; i < population_size ; i ++ {
-      fmt.Printf("\nIndividual: %s\tEvaluation %d\n", population[i], fitness(population[i]))
+      fmt.Printf("\tIndividual: %s\tEvaluation %d\n", population[i], population_score[i])
     }
 
-    // 2 - Define Parents
-    fmt.Printf("\n2 - Define Parents:\n")
+    // 2 - Elitism
+    fmt.Printf("\n2 - Elitism:\n\tNumber of elite members: %d\n", elitism_individuals)
+    elite := elitism(population, population_score, population_size, elitism_individuals)
+    for i := 0 ; i < elitism_individuals ; i ++ {
+      fmt.Printf("\tIndividual: %s\n", elite[i])
+    }
+
+
+    // 3 - Define Parents
+    fmt.Printf("\n3 - Define Parents:\n")
     parents := define_parents(population, population_size, k)
-    fmt.Printf("\nParents:\n%s\n\n",parents)
+    fmt.Printf("\n\tParents: %s\n\n",parents)
 
-    // 3 - Generate Children
-    fmt.Printf("\n3 - Generate Chindren:\n")
+    // 4 - Generate Children
+    fmt.Printf("\n4 - Generate Chindren:\n")
     new_population := generate_children(parents, population_size)
-    fmt.Printf("\nNew population:\n%s\n", new_population)
+    fmt.Printf("\n\tNew population: %s\n", new_population)
 
-    // 4 - Mutation
-    fmt.Printf("\n4 - Mutation:\n")
+    // 5 - Mutation
+    fmt.Printf("\n5 - Mutation:\n")
     new_population = generate_mutation(new_population, population_size, gene_number, mutation_rate)
-    fmt.Printf("Mutated Generation: %s\n\n", new_population)
+    fmt.Printf("\tMutated Generation: %s\n\n", new_population)
 
-    // 5 - Replace population vector with new population one
+    // 6 - Replace population vector with new population one
     population = nil    // Clean ond population
     for i:= 0 ; i < len(new_population) ; i++ {
       population = append(population, new_population[i])
     }
   }
 
-  // 6 - Best individual
+  // 7 - Best individual
   best, score := best_individual()
   fmt.Printf("\nBest Individual: %s with score %d\n\n", best, score)
 }

@@ -1,4 +1,4 @@
-# Genetic_Algorithms
+# Genetic Algorithms
 
 A genetic algorithm is a search heuristic that is inspired by Charles Darwin's theory of natural evolution. This algorithm reflects the process of natural selection where the fittest individuals are selected for reproduction in order to produce offspring of the next generation, using these steps:
 
@@ -6,16 +6,18 @@ A genetic algorithm is a search heuristic that is inspired by Charles Darwin's t
 
 2 - **Evaluation** of the current population (fitness) accordingly to what is expected from these individuals
 
-3 - **Define the parents** based on Evaluation (based on roulette, rank or tournament)
+3 - **Elitism** passing a percentage of extraordinary individuals to the next generation
 
-4 - **Generate the children** (cut-point or crossover)
+4 - **Define the parents** based on Evaluation (based on roulette, rank or tournament)
 
-5 - **Mutation**
+5 - **Generate the children** (cut-point or crossover)
 
-6 - Find the **Best Individual**
+6 - **Mutation**
+
+7 - Find the **Best Individual**
 
 TODO:
-- Implement Elitism
+- Finish Elitism (split individual and score on elitism function and ensure his place in the next generation)
 
 
 # One Max Problem
