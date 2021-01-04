@@ -20,6 +20,7 @@ TODO:
 - Clean code
 - Create debug option
 - Check if mutation percentage should consider the number of individuals or genes
+- Review use of local and global variables in functions
 
 
 # One Max Problem
