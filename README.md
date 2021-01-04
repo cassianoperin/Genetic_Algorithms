@@ -6,9 +6,9 @@ A genetic algorithm is a search heuristic that is inspired by Charles Darwin's t
 
 2 - **Evaluation** of the current population (fitness) accordingly to what is expected from these individuals
 
-3 - **Elitism** passing a percentage of extraordinary individuals to the next generation
+3 - **Define the parents** based on Evaluation (based on roulette, rank or tournament)
 
-4 - **Define the parents** based on Evaluation (based on roulette, rank or tournament)
+4 - **Elitism** passing a percentage of extraordinary individuals to the next generation
 
 5 - **Generate the children** (cut-point or crossover)
 
@@ -17,7 +17,9 @@ A genetic algorithm is a search heuristic that is inspired by Charles Darwin's t
 7 - Find the **Best Individual**
 
 TODO:
-- Finish Elitism (split individual and score on elitism function and ensure his place in the next generation)
+- Clean code
+- Create debug option
+- Check if mutation percentage should consider the number of individuals or genes
 
 
 # One Max Problem
