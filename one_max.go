@@ -12,14 +12,15 @@ import (
 )
 
 var (
-  population_size int = 20
-  gene_number int = 5
+  population_size int = 100
+  gene_number int = 100
   population []string
   k = 3 // Tournament size (number of participants)
   crossover_rate float64 = 0.7
   mutation_rate float64 = 0.005
-  generations int = 2
-  elitism_individuals int = (10 * population_size) / 100  // 10% of population size
+  generations int = 50
+  elitism_percentual int = 10  // 10% of population size
+  elitism_individuals int = (elitism_percentual * population_size) / 100
 )
 
 
@@ -90,20 +91,27 @@ func fitness_population(pop []string) []int {
 
 
 // ------------------------- Elitism -------------------------- //
-func elitism(pop []string, pop_score []int, pop_size int, elitism_number int) []string {
-  var elite, tmp []string
+func elitism(pop []string, pop_score []int, pop_size int, elitism_number int) ([]string, []string) {
+  var (
+    elite, elite_score, tmp_slice []string
+  )
 
+  // Append score + individual in one slice
   for i := 0 ; i < pop_size ; i++ {
-    tmp = append( tmp, strconv.Itoa(pop_score[i]) + "," + pop[i] )
+    tmp_slice = append( tmp_slice, strconv.Itoa(pop_score[i]) + "," + pop[i] )
   }
 
-  sort.Strings(tmp)
+  // Sort slice
+  sort.Strings(tmp_slice)
 
-  for i := pop_size -1 ; i > ( pop_size -1 )- elitism_number ; i-- {
-    elite = append(elite, tmp[i])
+  // Insert individuals on Elite slice and score on elite_score
+  for i := pop_size -1 ; i > ( pop_size -1 ) - elitism_number ; i-- {
+    tmp_slice := strings.Split(tmp_slice[i],",")
+    elite = append( elite, tmp_slice[1] )       // Individual
+    elite_score = append( elite_score, tmp_slice[0] )   //Score
   }
 
-  return elite
+  return elite, elite_score
 }
 
 
@@ -150,7 +158,7 @@ func define_parents(pop []string, pop_size int, k int) []string {
 
 
 // -------------------- Generate Children --------------------- //
-func generate_children(parents []string, pop_size int) []string {
+func generate_children(parents []string, pop_size int, elitism_number int, elite []string) []string {
   var (
     father1, father2, child1, child2 string
     pop_new []string
@@ -210,6 +218,29 @@ func generate_children(parents []string, pop_size int) []string {
     }
 
   }
+
+  if elitism_number > 0 {
+    fmt.Printf("\n\tElitism: Regular individual removal:\n")
+
+    // Remove randomically the number os elite elements
+    for i := 0 ; i < elitism_number ; i++ {
+      random := rand.Intn(len(pop_new))
+      fmt.Printf("\t\tIndividual %s removed randomically from new population\n", pop_new[random])
+
+      // Remove the element at index 'random' from pop_new
+      pop_new[random] = pop_new[len(pop_new)-1] // Copy last element to index 'random'.
+      pop_new[len(pop_new)-1] = ""   // Erase last element (write zero value).
+      pop_new = pop_new[:len(pop_new)-1]   // Truncate slice.
+    }
+
+    // Insert Elite Members on next generation
+    fmt.Printf("\n\tElitism: Elite individual insertion:\n")
+    for i := 0 ; i < elitism_number ; i++ {
+      pop_new = append( pop_new, elite[i] )
+      fmt.Printf("\t\tIndividual %s inserted to new population\n", elite[i])
+    }
+  }
+
 
   return pop_new
 }
@@ -306,22 +337,21 @@ func main() {
       fmt.Printf("\tIndividual: %s\tEvaluation %d\n", population[i], population_score[i])
     }
 
-    // 2 - Elitism
-    fmt.Printf("\n2 - Elitism:\n\tNumber of elite members: %d\n", elitism_individuals)
-    elite := elitism(population, population_score, population_size, elitism_individuals)
-    for i := 0 ; i < elitism_individuals ; i ++ {
-      fmt.Printf("\tIndividual: %s\n", elite[i])
-    }
-
-
-    // 3 - Define Parents
-    fmt.Printf("\n3 - Define Parents:\n")
+    // 2 - Define Parents
+    fmt.Printf("\n2 - Define Parents:\n")
     parents := define_parents(population, population_size, k)
     fmt.Printf("\n\tParents: %s\n\n",parents)
 
+    // 3 - Elitism
+    fmt.Printf("\n3 - Elitism:\n\tNumber of elite members: %d\n", elitism_individuals)
+    elite, elite_score := elitism(population, population_score, population_size, elitism_individuals)
+    for i := 0 ; i < elitism_individuals ; i ++ {
+      fmt.Printf("\tIndividual %s set for elite with score: %s\n", elite[i], elite_score[i] )
+    }
+
     // 4 - Generate Children
     fmt.Printf("\n4 - Generate Chindren:\n")
-    new_population := generate_children(parents, population_size)
+    new_population := generate_children(parents, population_size, elitism_individuals, elite)
     fmt.Printf("\n\tNew population: %s\n", new_population)
 
     // 5 - Mutation
