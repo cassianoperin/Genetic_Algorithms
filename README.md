@@ -16,13 +16,6 @@ A genetic algorithm is a search heuristic that is inspired by Charles Darwin's t
 
 7 - Find the **Best Individual**
 
-TODO:
-- Add mutation (individuals) over generations graph
-- Add mutation (genes) over generations graph
-- Add crossover over generations graph
-- Mutation is too high when we have too many genes, maybe calculate it automatically to match 0,05
-
-
 # One Max Problem
 The objective here is to generate an individual (composite of 0's or 1's) with all bits 1 evolving the initial population.
 

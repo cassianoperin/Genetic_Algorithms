@@ -20,12 +20,12 @@ import (
 
 var (
   // Main variables
-  population_size int = 10
-  gene_number int = 10
-  k = 2 // Tournament size (number of participants)
+  population_size int = 100
+  gene_number int = 100
+  k = 30 // Tournament size (number of participants)
   crossover_rate float64 = 0.7
-  mutation_rate float64 = 0.0005  // 0,5% (I'm analyzing each gene so the mutation rate should be really small)
-  generations int = 10
+  mutation_rate float64 = 0.0005  // I'm analyzing each gene so the mutation rate should be really small
+  generations int = 100
   elitism_percentual int = 10  // 10% of population size
 
   // Other variables
@@ -37,6 +37,9 @@ var (
   sizeX float64 = 1024
   sizeY float64 = 768
   graph_fitness []int
+  graph_mutation_individuals []int
+  graph_mutation_genes []int
+  graph_crossover []int
   // graph []int
   pixelY_size float64 = (sizeY -100) / float64(gene_number)
   pixelX_size float64 = (sizeX -100) / float64(generations)
@@ -44,6 +47,28 @@ var (
   // Counters
   mutation_count, mutation_ind_count int
 )
+
+
+func slice_average(slice []int, total int) (int, int){
+  var (
+    sum int = 0
+    average int = 0
+    percentage int = 0
+  )
+
+  // Sum all values
+  for i:=0 ; i < len(slice) ; i++ {
+    sum += slice[i]
+  }
+
+  // Divide by the size of the slice
+  average = sum / len(slice)
+  // Percentage
+  percentage = (average * 100) / total
+
+  return average, percentage
+}
+
 
 func graphics() {
 
@@ -65,20 +90,20 @@ func graphics() {
   // ------------------- Draw Cartesian Plane ------------------- //
   imd.Color = colornames.Gray
   // X
-  imd.Push(pixel.V(50, 0), pixel.V(50, sizeY - 50)) // Initial X,Y -> Final X,Y
+  imd.Push(pixel.V(50, 0), pixel.V(50, sizeY - 40)) // Initial X,Y -> Final X,Y
   imd.Line(2)
   // X Arrow
-  imd.Push(pixel.V(sizeX-50, 40))
-  imd.Push(pixel.V(sizeX-50, 60))
-  imd.Push(pixel.V(sizeX-30, 50))
+  imd.Push(pixel.V(sizeX-40, 40))
+  imd.Push(pixel.V(sizeX-40, 60))
+  imd.Push(pixel.V(sizeX-20, 50))
 	imd.Polygon(0)
   // Y
-  imd.Push(pixel.V(0, 50), pixel.V(sizeX - 50, 50))
+  imd.Push(pixel.V(0, 50), pixel.V(sizeX - 40, 50))
   imd.Line(2)
   // Y Arrow
-  imd.Push(pixel.V(40, sizeY-50))
-  imd.Push(pixel.V(60, sizeY-50))
-  imd.Push(pixel.V(50, sizeY-30))
+  imd.Push(pixel.V(40, sizeY-40))
+  imd.Push(pixel.V(60, sizeY-40))
+  imd.Push(pixel.V(50, sizeY-20))
 	imd.Polygon(0)
 
   // Plane Cartesian Zero
@@ -89,24 +114,99 @@ func graphics() {
   txtCartesianGen := text.New(pixel.V(sizeX -950, 25), basicAtlas)
   txtCartesianGen.Color = colornames.Black
 	fmt.Fprintf(txtCartesianGen, "Generations")
-  // Y Fitness Label
-  txtCartesianFit := text.New(pixel.V(1, 75), basicAtlas)
-  txtCartesianFit.Color = colornames.Black
-  fmt.Fprintf(txtCartesianFit, "Fitness")
+
+
+  // -------------------------- Legend -------------------------- //
+
+  // Legend Label
+  //Fitness
+  txtLegend1 := text.New( pixel.V(140, 745), basicAtlas )
+  txtLegend1.Color = colornames.Blue
+  fmt.Fprintf( txtLegend1, "Fitness:\n" +  strconv.Itoa(graph_fitness[len(graph_fitness)-1]))
+  txtLegend1.Color = colornames.Black
+  fmt.Fprintf(txtLegend1, " of " + strconv.Itoa(gene_number)  )
+
+  // Mutated Individual
+  slice_avg, slice_pct := slice_average(graph_mutation_individuals, population_size)
+  txtLegend2 := text.New( pixel.V(370, 745), basicAtlas )
+  txtLegend2.Color = colornames.Red
+  fmt.Fprintf(txtLegend2, "Mutated Individuals:\n" + strconv.Itoa(slice_avg) )
+  txtLegend2.Color = colornames.Black
+  fmt.Fprintf(txtLegend2, " of " + strconv.Itoa(population_size) )
+  txtLegend2.Color = colornames.Red
+  fmt.Fprintf(txtLegend2, " (" + strconv.Itoa(slice_pct) + "%%)"  )
+
+  // Mutated Genes
+  slice_avg, slice_pct = slice_average(graph_mutation_genes, gene_number)
+  txtLegend3 := text.New( pixel.V(600, 745), basicAtlas )
+  txtLegend3.Color = colornames.Green
+  fmt.Fprintf(txtLegend3, "Mutated Genes:\n" + strconv.Itoa(slice_avg) )
+  txtLegend3.Color = colornames.Black
+  fmt.Fprintf(txtLegend3, " of " + strconv.Itoa(gene_number) )
+  txtLegend3.Color = colornames.Green
+  fmt.Fprintf(txtLegend3, " (" + strconv.Itoa(slice_pct) + "%%)"  )
+
+  // Crossover
+  slice_avg, slice_pct = slice_average(graph_crossover, population_size)
+  txtLegend4 := text.New( pixel.V(830, 745), basicAtlas )
+  txtLegend4.Color = colornames.Purple
+  fmt.Fprintf(txtLegend4, "Crossover:\n" + strconv.Itoa(slice_avg) )
+  txtLegend4.Color = colornames.Black
+  fmt.Fprintf(txtLegend4, " of " + strconv.Itoa(population_size) )
+  txtLegend4.Color = colornames.Purple
+  fmt.Fprintf(txtLegend4, " (" + strconv.Itoa(slice_pct) + "%%)"  )
+
+  // Line legend Fitness
+  var x_legend float64 = 100
+  var y_legend float64 = 750
+  for i := 0 ; i < 3 ; i++ {
+    imd.Color = colornames.Blue
+    imd.Push(pixel.V(x_legend, y_legend), pixel.V(x_legend+10, y_legend) )
+    x_legend +=10
+  }
+  imd.Line(2)
+
+  // Line legend Individuals Mutated
+  x_legend +=200
+  for i := 0 ; i < 3 ; i++ {
+    imd.Color = colornames.Red
+    imd.Push(pixel.V(x_legend, y_legend), pixel.V(x_legend+10, y_legend) )
+    x_legend +=10
+  }
+  imd.Line(2)
+
+  // Line legend Genes Mutated
+  x_legend +=200
+  for i := 0 ; i < 3 ; i++ {
+    imd.Color = colornames.Green
+    imd.Push(pixel.V(x_legend, y_legend), pixel.V(x_legend+10, y_legend) )
+    x_legend +=10
+  }
+  imd.Line(2)
+
+  // Line legend Crossover
+  x_legend +=200
+  for i := 0 ; i < 3 ; i++ {
+    imd.Color = colornames.Purple
+    imd.Push(pixel.V(x_legend, y_legend), pixel.V(x_legend+10, y_legend) )
+    x_legend +=10
+  }
+  imd.Line(2)
+
 
   // ------------- Draw Max Fitness and Generations ------------- //
 
   // 100% Fitness Line
-  imd.Color = colornames.Lightgray
-  imd.Push(pixel.V(50, pixelY_size*float64(gene_number)), pixel.V(sizeX - 50 - pixelX_size, pixelY_size*float64(gene_number) ) )
+  imd.Color = colornames.Lightgrey
+  imd.Push(pixel.V(50, pixelY_size*float64(gene_number)+50), pixel.V(sizeX - 50 - pixelX_size, pixelY_size*float64(gene_number)+50) )
   imd.Line(1)
 
   // Draw Generation Result Line
-  imd.Push(pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), 50), pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), pixelY_size*float64(gene_number) ) )
+  imd.Push(pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), 50), pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), pixelY_size*float64(gene_number)+50 ) )
   imd.Line(1)
 
   // Y 100% Label
-  txtMaxY := text.New(pixel.V(20, pixelY_size*float64(gene_number)-5), basicAtlas)
+  txtMaxY := text.New(pixel.V(20, pixelY_size*float64(gene_number)+50-5), basicAtlas)
   txtMaxY.Color = colornames.Black
 	fmt.Fprintf(txtMaxY, strconv.Itoa(gene_number))
 
@@ -114,6 +214,7 @@ func graphics() {
 	txtMaxX := text.New(pixel.V(sizeX-80, 25), basicAtlas)
   txtMaxX.Color = colornames.Black
 	fmt.Fprintf(txtMaxX, strconv.Itoa(generations))
+
 
   // ------------- Draw Max Fitness and Generations ------------- //
 
@@ -124,32 +225,68 @@ func graphics() {
 
   // Fitness Result Label
   len_graph:= len(graph_fitness)
-  txtResultFit := text.New(pixel.V(sizeX -45, pixelY_size*float64(graph_fitness[len_graph-1])-5), basicAtlas)
+  txtResultFit := text.New(pixel.V(sizeX -45, (pixelY_size*float64(graph_fitness[len_graph-1])+50-5)), basicAtlas)
   txtResultFit.Color = colornames.Blue
 	fmt.Fprintf(txtResultFit, strconv.Itoa(graph_fitness[len_graph-1]))
 
   // Y Start Label
-  txtStartY := text.New(pixel.V(20, pixelY_size*float64(graph_fitness[0])-5), basicAtlas)
+  txtStartY := text.New(pixel.V(20, pixelY_size*float64(graph_fitness[0])+50-5), basicAtlas)
   txtStartY.Color = colornames.Blue
   text :=  strconv.Itoa(graph_fitness[0])
   // basicTxt5.Dot.X = basicTxt5.BoundsOf(text).W()
   fmt.Fprintf(txtStartY, text)
 
+
   // -------------------- Draw Fitness Graph -------------------- //
   x := float64(50)
-  y := float64(graph_fitness[0]) * pixelY_size
+  y := float64(graph_fitness[0]) * pixelY_size + 50
   for i := 1 ; i < len(graph_fitness) ; i++ {
-    if i % 2 == 0{
-      imd.Color = colornames.Blue
-    } else {
-      imd.Color = colornames.Lightblue
-    }
+    imd.Color = colornames.Blue
     // Initial X,Y -> Final X,Y
-    imd.Push(pixel.V(x, y), pixel.V(x+pixelX_size, float64(graph_fitness[i]) * pixelY_size) )
+    imd.Push(pixel.V(x, y), pixel.V(x+pixelX_size, float64(graph_fitness[i]) * pixelY_size + 50) )
     x+=pixelX_size
-    y = float64(graph_fitness[i]) * pixelY_size
+    y = float64(graph_fitness[i]) * pixelY_size + 50
   }
 	imd.Line(2)
+
+
+  // -------------- Draw Individual Mutation Graph -------------- //
+  x = float64(50)
+  y = float64(graph_mutation_individuals[0]) * pixelY_size + 50
+  for i := 1 ; i < len(graph_mutation_individuals) ; i++ {
+    imd.Color = colornames.Red
+    // Initial X,Y -> Final X,Y
+    imd.Push(pixel.V(x, y), pixel.V(x+pixelX_size, float64(graph_mutation_individuals[i]) * pixelY_size + 50) )
+    x+=pixelX_size
+    y = (float64(graph_mutation_individuals[i]) * pixelY_size) + 50
+  }
+  imd.Line(2)
+
+
+  // ----------------- Draw Gene Mutation Graph ----------------- //
+  x = float64(50)
+  y = float64(graph_mutation_genes[0]) * pixelY_size + 50
+  for i := 1 ; i < len(graph_mutation_genes) ; i++ {
+    imd.Color = colornames.Green
+    // Initial X,Y -> Final X,Y
+    imd.Push(pixel.V(x, y), pixel.V(x+pixelX_size, float64(graph_mutation_genes[i]) * pixelY_size + 50) )
+    x+=pixelX_size
+    y = (float64(graph_mutation_genes[i]) * pixelY_size) + 50
+  }
+  imd.Line(2)
+
+
+  // ------------------- Draw Crossover Graph ------------------- //
+  x = float64(50)
+  y = float64(graph_crossover[0]) * pixelY_size + 50
+  for i := 1 ; i < len(graph_crossover) ; i++ {
+    imd.Color = colornames.Purple
+    // Initial X,Y -> Final X,Y
+    imd.Push(pixel.V(x, y), pixel.V(x+pixelX_size, float64(graph_crossover[i]) * pixelY_size + 50) )
+    x+=pixelX_size
+    y = (float64(graph_crossover[i]) * pixelY_size) + 50
+  }
+  imd.Line(2)
 
 
   // ---------------------- Render Graphics --------------------- //
@@ -160,7 +297,6 @@ func graphics() {
     // Cartesian Plane text
     txtCartesianZero.Draw(win, pixel.IM.Scaled(txtCartesianZero.Orig, 1))
     txtCartesianGen.Draw(win, pixel.IM.Scaled(txtCartesianGen.Orig, 1))
-    txtCartesianFit.Draw(win, pixel.IM.Scaled(txtCartesianFit.Orig, 1))
     // Draw Max Fitness and Generations
     txtMaxY.Draw(win, pixel.IM.Scaled(txtMaxY.Orig, 1))
     if len(graph_fitness) != generations {
@@ -170,6 +306,12 @@ func graphics() {
     txtResultGen.Draw(win, pixel.IM.Scaled(txtResultGen.Orig, 1))
     txtResultFit.Draw(win, pixel.IM.Scaled(txtResultFit.Orig, 1))
     txtStartY.Draw(win, pixel.IM.Scaled(txtStartY.Orig, 1))
+    // Legend
+    txtLegend1.Draw(win, pixel.IM.Scaled(txtLegend1.Orig, 1))
+    txtLegend2.Draw(win, pixel.IM.Scaled(txtLegend2.Orig, 1))
+    txtLegend3.Draw(win, pixel.IM.Scaled(txtLegend3.Orig, 1))
+    txtLegend4.Draw(win, pixel.IM.Scaled(txtLegend4.Orig, 1))
+
 
     // Update screen
 		win.Update()
@@ -590,8 +732,14 @@ func main() {
     fmt.Printf("Best Individual: %s\n", best)
     fmt.Printf("Fitness: %d\n\n", score)
 
-    // Fill graphic position vector
+    // Fill Fitness graphic position vector
     graph_fitness = append(graph_fitness, score)
+    // Fill Individual mutation graphic position vector
+    graph_mutation_individuals = append(graph_mutation_individuals, mutation_ind_count)
+    // Fill Gene mutation graphic position vector
+    graph_mutation_genes = append(graph_mutation_genes, mutation_count)
+    // Fill Crossover graphic position vector
+    graph_crossover = append(graph_crossover, crossover_count)
 
     // Check if the objective is reached by some individual of this generation
     if score == gene_number {
