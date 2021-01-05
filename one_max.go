@@ -9,62 +9,209 @@ import (
   "math/rand"
   "strconv"
   "regexp"
+  // Graphics
+  "github.com/faiface/pixel"
+  "github.com/faiface/pixel/imdraw"
+  "github.com/faiface/pixel/pixelgl"
+  "golang.org/x/image/colornames"
+	"github.com/faiface/pixel/text"
+  "golang.org/x/image/font/basicfont"
 )
 
 var (
-  population_size int = 100
-  gene_number int = 100
-  population []string
-  k = 3 // Tournament size (number of participants)
+  // Main variables
+  population_size int = 10
+  gene_number int = 10
+  k = 2 // Tournament size (number of participants)
   crossover_rate float64 = 0.7
-  mutation_rate float64 = 0.005
-  generations int = 50
+  mutation_rate float64 = 0.0005  // 0,5% (I'm analyzing each gene so the mutation rate should be really small)
+  generations int = 10
   elitism_percentual int = 10  // 10% of population size
+
+  // Other variables
+  population []string
   elitism_individuals int = (elitism_percentual * population_size) / 100
+  debug bool = false
+
+  // Graphics
+  sizeX float64 = 1024
+  sizeY float64 = 768
+  graph_fitness []int
+  // graph []int
+  pixelY_size float64 = (sizeY -100) / float64(gene_number)
+  pixelX_size float64 = (sizeX -100) / float64(generations)
+
+  // Counters
+  mutation_count, mutation_ind_count int
 )
+
+func graphics() {
+
+  imd := imdraw.New(nil)
+
+	cfg := pixelgl.WindowConfig{
+		Title:  "Genetic Algorithms - One Max Problem",
+		Bounds: pixel.R(0, 0, sizeX, sizeY),
+		VSync:  true,
+	}
+	win, err := pixelgl.NewWindow(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+  basicAtlas := text.NewAtlas(basicfont.Face7x13, text.ASCII)
+
+
+  // ------------------- Draw Cartesian Plane ------------------- //
+  imd.Color = colornames.Gray
+  // X
+  imd.Push(pixel.V(50, 0), pixel.V(50, sizeY - 50)) // Initial X,Y -> Final X,Y
+  imd.Line(2)
+  // X Arrow
+  imd.Push(pixel.V(sizeX-50, 40))
+  imd.Push(pixel.V(sizeX-50, 60))
+  imd.Push(pixel.V(sizeX-30, 50))
+	imd.Polygon(0)
+  // Y
+  imd.Push(pixel.V(0, 50), pixel.V(sizeX - 50, 50))
+  imd.Line(2)
+  // Y Arrow
+  imd.Push(pixel.V(40, sizeY-50))
+  imd.Push(pixel.V(60, sizeY-50))
+  imd.Push(pixel.V(50, sizeY-30))
+	imd.Polygon(0)
+
+  // Plane Cartesian Zero
+	txtCartesianZero := text.New(pixel.V(40, 25), basicAtlas)
+  txtCartesianZero.Color = colornames.Black
+	fmt.Fprintf(txtCartesianZero, "0")
+  // X Generations Label
+  txtCartesianGen := text.New(pixel.V(sizeX -950, 25), basicAtlas)
+  txtCartesianGen.Color = colornames.Black
+	fmt.Fprintf(txtCartesianGen, "Generations")
+  // Y Fitness Label
+  txtCartesianFit := text.New(pixel.V(1, 75), basicAtlas)
+  txtCartesianFit.Color = colornames.Black
+  fmt.Fprintf(txtCartesianFit, "Fitness")
+
+  // ------------- Draw Max Fitness and Generations ------------- //
+
+  // 100% Fitness Line
+  imd.Color = colornames.Lightgray
+  imd.Push(pixel.V(50, pixelY_size*float64(gene_number)), pixel.V(sizeX - 50 - pixelX_size, pixelY_size*float64(gene_number) ) )
+  imd.Line(1)
+
+  // Draw Generation Result Line
+  imd.Push(pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), 50), pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), pixelY_size*float64(gene_number) ) )
+  imd.Line(1)
+
+  // Y 100% Label
+  txtMaxY := text.New(pixel.V(20, pixelY_size*float64(gene_number)-5), basicAtlas)
+  txtMaxY.Color = colornames.Black
+	fmt.Fprintf(txtMaxY, strconv.Itoa(gene_number))
+
+  // X 100% Label
+	txtMaxX := text.New(pixel.V(sizeX-80, 25), basicAtlas)
+  txtMaxX.Color = colornames.Black
+	fmt.Fprintf(txtMaxX, strconv.Itoa(generations))
+
+  // ------------- Draw Max Fitness and Generations ------------- //
+
+  // Generation result Label
+	txtResultGen := text.New(pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), 25), basicAtlas)
+  txtResultGen.Color = colornames.Blue
+	fmt.Fprintf(txtResultGen, strconv.Itoa(len(graph_fitness)))
+
+  // Fitness Result Label
+  len_graph:= len(graph_fitness)
+  txtResultFit := text.New(pixel.V(sizeX -45, pixelY_size*float64(graph_fitness[len_graph-1])-5), basicAtlas)
+  txtResultFit.Color = colornames.Blue
+	fmt.Fprintf(txtResultFit, strconv.Itoa(graph_fitness[len_graph-1]))
+
+  // Y Start Label
+  txtStartY := text.New(pixel.V(20, pixelY_size*float64(graph_fitness[0])-5), basicAtlas)
+  txtStartY.Color = colornames.Blue
+  text :=  strconv.Itoa(graph_fitness[0])
+  // basicTxt5.Dot.X = basicTxt5.BoundsOf(text).W()
+  fmt.Fprintf(txtStartY, text)
+
+  // -------------------- Draw Fitness Graph -------------------- //
+  x := float64(50)
+  y := float64(graph_fitness[0]) * pixelY_size
+  for i := 1 ; i < len(graph_fitness) ; i++ {
+    if i % 2 == 0{
+      imd.Color = colornames.Blue
+    } else {
+      imd.Color = colornames.Lightblue
+    }
+    // Initial X,Y -> Final X,Y
+    imd.Push(pixel.V(x, y), pixel.V(x+pixelX_size, float64(graph_fitness[i]) * pixelY_size) )
+    x+=pixelX_size
+    y = float64(graph_fitness[i]) * pixelY_size
+  }
+	imd.Line(2)
+
+
+  // ---------------------- Render Graphics --------------------- //
+	for !win.Closed() {
+		win.Clear(colornames.White)
+    // Draw Objects
+		imd.Draw(win)
+    // Cartesian Plane text
+    txtCartesianZero.Draw(win, pixel.IM.Scaled(txtCartesianZero.Orig, 1))
+    txtCartesianGen.Draw(win, pixel.IM.Scaled(txtCartesianGen.Orig, 1))
+    txtCartesianFit.Draw(win, pixel.IM.Scaled(txtCartesianFit.Orig, 1))
+    // Draw Max Fitness and Generations
+    txtMaxY.Draw(win, pixel.IM.Scaled(txtMaxY.Orig, 1))
+    if len(graph_fitness) != generations {
+      txtMaxX.Draw(win, pixel.IM.Scaled(txtMaxX.Orig, 1))
+    }
+    // Draw result information on graphic
+    txtResultGen.Draw(win, pixel.IM.Scaled(txtResultGen.Orig, 1))
+    txtResultFit.Draw(win, pixel.IM.Scaled(txtResultFit.Orig, 1))
+    txtStartY.Draw(win, pixel.IM.Scaled(txtStartY.Orig, 1))
+
+    // Update screen
+		win.Update()
+	}
+}
+
 
 
 // ------------------- Validate Parameters -------------------- //
-func validate_parameters() {
+func validate_parameters(pop_size int, competitors int) {
   // Minimal Population Size size accepted is 2
-  if population_size % 2 == 1 {
+  if pop_size % 2 == 1 {
     fmt.Printf("\nPopulation size should be ODD numbers. Exiting\n")
-    os.Exit(2)
+    os.Exit(0)
   }
 
   // Population Size should be positive
-  if population_size <= 0 {
+  if pop_size <= 0 {
     fmt.Printf("\nPopulation size should be Positive. Exiting\n")
-    os.Exit(2)
+    os.Exit(0)
+  }
+
+  // K (competitors) must be at least 2
+  if competitors < 2 {
+    fmt.Printf("\nNumber of competitors (k) must be at least 2. Exiting\n")
+    os.Exit(0)
   }
 }
 
 
 // ------------------- Generate Individuals ------------------- //
-func generate_individuals(gene_number int) string {
+func generate_individuals(gene_nr int) string {
   var individual string = ""
 
   // Initialize rand source
   rand.Seed(time.Now().UnixNano())
 
-  for i := 0 ; i < gene_number ; i++ {
+  for i := 0 ; i < gene_nr ; i++ {
     individual += strconv.Itoa(rand.Intn(2))
   }
 
   return individual
-}
-
-
-// ------------------- Generate Population -------------------- //
-func generate_population(population_size int, gene_number int) {
-
-  fmt.Printf("Initializing the Population:\n")
-
-  // Generate each individual for population
-  for i := 0 ; i < population_size ; i++ {
-    population = append( population, generate_individuals(gene_number) )
-  }
-
 }
 
 
@@ -148,7 +295,9 @@ func define_parents(pop []string, pop_size int, k int) []string {
 
     parents = append(parents, winner)
 
-    fmt.Printf("\tTournament: %d\t Competitors: %s\t Scores: %d\t Winner: %s (%d)\n", tournament, competitors, score, winner, bigger)
+    if debug {
+      fmt.Printf("\tTournament: %d\t Competitors: %s\t Scores: %d\t Winner: %s (%d)\n", tournament, competitors, score, winner, bigger)
+    }
 
   }
 
@@ -158,13 +307,16 @@ func define_parents(pop []string, pop_size int, k int) []string {
 
 
 // -------------------- Generate Children --------------------- //
-func generate_children(parents []string, pop_size int, elitism_number int, elite []string) []string {
+func generate_children(parents []string, pop_size int, elitism_number int, elite []string) ([]string, int) {
   var (
     father1, father2, child1, child2 string
     pop_new []string
+    cross_count int = 0
   )
 
-  fmt.Printf("\n\tSelected parents:\n")
+  if debug {
+    fmt.Printf("\n\tSelected parents:\n")
+  }
 
   for i := 0 ; i < pop_size / 2 ; i++ {
     // Define the couples
@@ -174,14 +326,18 @@ func generate_children(parents []string, pop_size int, elitism_number int, elite
     randomIndex = rand.Intn(len(parents))
     father2 = parents[randomIndex]
 
-    fmt.Printf("\t%d) %s with %s\n", i, father1, father2)
+    if debug {
+      fmt.Printf("\t%d) %s with %s\n", i, father1, father2)
+    }
 
     // Define if will have crossover (the parents will be copied to next generation)
     if rand.Float64() < crossover_rate {
 
       // Define the cut-point
       cut_point := rand.Intn(gene_number -1) + 1
-      fmt.Printf("\t\tCut-point: %d\n",cut_point)
+      if debug {
+        fmt.Printf("\t\tCut-point: %d\n",cut_point)
+      }
 
       // Split father's values
       // Father1
@@ -197,35 +353,49 @@ func generate_children(parents []string, pop_size int, elitism_number int, elite
       child1_p1 := strings.Join(father1_split_p1,"")
       child1_p2 := strings.Join(father2_split_p2,"")
       child1 = child1_p1 + child1_p2
-      fmt.Printf("\t\tChild1: %s + %s: %s\n", child1_p1, child1_p2, child1)
+      if debug {
+        fmt.Printf("\t\tChild1: %s + %s: %s\n", child1_p1, child1_p2, child1)
+      }
 
       // Child2
       child2_p1 := strings.Join(father2_split_p1,"")
       child2_p2 := strings.Join(father1_split_p2,"")
       child2 = child2_p1 + child2_p2
-      fmt.Printf("\t\tChild2: %s + %s: %s\n", child2_p1, child2_p2, child2)
+      if debug {
+        fmt.Printf("\t\tChild2: %s + %s: %s\n", child2_p1, child2_p2, child2)
+      }
 
       // Put the childs in the new generation
       pop_new = append(pop_new, child1)
       pop_new = append(pop_new, child2)
 
     } else {
-      fmt.Printf("\t\tCrossover:\n")
+      if debug {
+        fmt.Printf("\t\tCrossover:\n")
+      }
       pop_new = append(pop_new, father1)
       pop_new = append(pop_new, father2)
-      fmt.Printf("\t\tChild1 (Father1): %s\n", father1)
-      fmt.Printf("\t\tChild2 (Father2): %s\n", father2)
+      if debug {
+        fmt.Printf("\t\tChild1 (Father1): %s\n", father1)
+        fmt.Printf("\t\tChild2 (Father2): %s\n", father2)
+      }
+      cross_count++
     }
 
   }
 
+  // Ensure place of elite members on next generation
   if elitism_number > 0 {
-    fmt.Printf("\n\tElitism: Regular individual removal:\n")
+    if debug {
+      fmt.Printf("\n\tElitism: Regular individual removal:\n")
+    }
 
     // Remove randomically the number os elite elements
     for i := 0 ; i < elitism_number ; i++ {
       random := rand.Intn(len(pop_new))
-      fmt.Printf("\t\tIndividual %s removed randomically from new population\n", pop_new[random])
+      if debug {
+        fmt.Printf("\t\tIndividual %d:\t%s removed randomically from new population\n", i, pop_new[random])
+      }
 
       // Remove the element at index 'random' from pop_new
       pop_new[random] = pop_new[len(pop_new)-1] // Copy last element to index 'random'.
@@ -234,33 +404,42 @@ func generate_children(parents []string, pop_size int, elitism_number int, elite
     }
 
     // Insert Elite Members on next generation
-    fmt.Printf("\n\tElitism: Elite individual insertion:\n")
+    if debug {
+      fmt.Printf("\n\tElitism: Elite individual insertion:\n")
+    }
     for i := 0 ; i < elitism_number ; i++ {
       pop_new = append( pop_new, elite[i] )
-      fmt.Printf("\t\tIndividual %s inserted to new population\n", elite[i])
+      if debug {
+        fmt.Printf("\t\tIndividual %d\t%s inserted to new population\n", i, elite[i])
+      }
     }
   }
 
-
-  return pop_new
+  return pop_new, cross_count
 }
 
 
-
 // ------------------------- Mutation ------------------------- //
+func generate_mutation(new_pop []string, pop_size int, gene_nr int, mutation_rate float64) ([]string, int, int) {
 
-func generate_mutation(new_pop []string, pop_size int, gene_number int, mutation_rate float64) []string {
-
-  var new_pop_mutated []string
+  var (
+    new_pop_mutated []string
+    count_genes int = 0
+    count_individuals int = 0
+  )
 
   // For all individuals in population
   for i := 0 ; i < pop_size ; i ++ {
 
-    var individual string = ""
+    var(
+      individual string = ""
+      individual_mutated_flag bool
+    )
+
     individual = new_pop[i]
 
     // For each gene, check for mutations
-    for gene := 0 ; gene < gene_number ; gene ++ {
+    for gene := 0 ; gene < gene_nr ; gene ++ {
 
       // Check if there is a mutation
       if mutation_rate >= rand.Float64() {
@@ -278,19 +457,28 @@ func generate_mutation(new_pop []string, pop_size int, gene_number int, mutation
         // Update the mutated individual
         individual = strings.Join(individual_split,"")
 
-        fmt.Printf("\tIndividual #%d (%s) mutated on gene %d. New Individual: %s \n", i, new_pop[i], gene, individual)
+        if debug {
+          fmt.Printf("\tIndividual #%d (%s) mutated on gene %d. New Individual: %s \n", i, new_pop[i], gene, individual)
+        }
+
+        count_genes ++  // Generation genes mutated count
+        individual_mutated_flag = true
 
       }
 
     }
 
+    // Generation individuals mutated count
+    if individual_mutated_flag {
+      count_individuals ++
+      individual_mutated_flag = false
+    }
+
     // Add mutated individuals to a new generation
     new_pop_mutated = append(new_pop_mutated, individual)
-
   }
 
-  return new_pop_mutated
-
+  return new_pop_mutated, count_genes, count_individuals
 }
 
 
@@ -316,57 +504,104 @@ func best_individual() (string, int) {
 
 
 
+// ------------------------- MAIN FUNCTION ------------------------- //
 func main() {
 
-  // Validate parameters
-  validate_parameters()
 
-  // 0 - Generate the population
-  generate_population(population_size, gene_number)
-  fmt.Printf("%s\n\n", population)
-
-  for i := 0 ; i < generations ; i++ {
-
-    fmt.Printf("\n// ---------------------------------- GENERATION: %d ---------------------------------- //\n\n", i)
+  // --------------------- Validate parameters --------------------- //
+  validate_parameters(population_size, k)
 
 
-    // 1 - Evaluation
-    fmt.Printf("1 - Evaluation:\n")
+  // ----------------- 0 - Generate the population ----------------- //
+  // Generate each individual for population
+  for i := 0 ; i < population_size ; i++ {
+    population = append( population, generate_individuals(gene_number) )
+  }
+
+
+  // ----------------------- Generations Loop ---------------------- //
+  for i := 0 ; i < generations ; i ++ {
+
+    if debug {
+      fmt.Printf("\n// ---------------------------------- GENERATION: %d ---------------------------------- //\n\n", i)
+    }
+
+    // ----------------------- 1 - Evaluation ------------------------ //
+    if debug {
+      fmt.Printf("1 - Evaluation:\n\n")
+    }
     population_score := fitness_population(population)
-    for i := 0 ; i < population_size ; i ++ {
-      fmt.Printf("\tIndividual: %s\tEvaluation %d\n", population[i], population_score[i])
+
+    // Show the evaluation of each individual
+    if debug {
+      for i := 0 ; i < population_size ; i ++ {
+        fmt.Printf("\tIndividual %d:\t%s\tEvaluation %d\n", i, population[i], population_score[i])
+      }
     }
 
-    // 2 - Define Parents
-    fmt.Printf("\n2 - Define Parents:\n")
+
+    // ---------------------- 2 - Define Parents --------------------- //
+    if debug {
+      fmt.Printf("\n2 - Define Parents:\n\n")
+    }
+
     parents := define_parents(population, population_size, k)
-    fmt.Printf("\n\tParents: %s\n\n",parents)
 
-    // 3 - Elitism
-    fmt.Printf("\n3 - Elitism:\n\tNumber of elite members: %d\n", elitism_individuals)
-    elite, elite_score := elitism(population, population_score, population_size, elitism_individuals)
-    for i := 0 ; i < elitism_individuals ; i ++ {
-      fmt.Printf("\tIndividual %s set for elite with score: %s\n", elite[i], elite_score[i] )
+    if debug {
+      fmt.Printf("\n\tParents: %s\n\n",parents)
     }
 
-    // 4 - Generate Children
-    fmt.Printf("\n4 - Generate Chindren:\n")
-    new_population := generate_children(parents, population_size, elitism_individuals, elite)
-    fmt.Printf("\n\tNew population: %s\n", new_population)
 
-    // 5 - Mutation
-    fmt.Printf("\n5 - Mutation:\n")
-    new_population = generate_mutation(new_population, population_size, gene_number, mutation_rate)
-    fmt.Printf("\tMutated Generation: %s\n\n", new_population)
+    // ------------------------- 3 - Elitism ------------------------- //
+    elite, elite_score := elitism(population, population_score, population_size, elitism_individuals)
+    if debug {
+      fmt.Printf("\n3 - Elitism:\n\n\tNumber of elite members: %d\n\n", elitism_individuals)
+      for i := 0 ; i < elitism_individuals ; i ++ {
+        fmt.Printf("\tIndividual %d:\t%s set for elite with score: %s\n", i, elite[i], elite_score[i] )
+      }
+    }
 
-    // 6 - Replace population vector with new population one
+
+    // -------------------- 4 - Generate Children -------------------- //
+    new_population, crossover_count := generate_children(parents, population_size, elitism_individuals, elite)
+    if debug {
+      fmt.Printf("\n4 - Generate Chindren:\n\n\tNew population: %s\n", new_population)
+    }
+
+
+    // ------------------------ 5 - Mutation ------------------------- //
+    new_population, mutation_count, mutation_ind_count = generate_mutation(new_population, population_size, gene_number, mutation_rate)
+    if debug {
+      fmt.Printf("\n5 - Mutation:\n\tMutated Generation: %s\n\n", new_population)
+    }
+
+
+    // ---- 6 - Replace population vector with new population one ---- //
     population = nil    // Clean ond population
     for i:= 0 ; i < len(new_population) ; i++ {
       population = append(population, new_population[i])
     }
+
+    // -------------------- 7 - Best individual ---------------------- //
+    best, score := best_individual()
+    fmt.Printf("\nGENERATION: %d\n", i)
+    fmt.Printf("Mutated individuals: %d\t\tMutated Genes: %d\n", mutation_ind_count, mutation_count)
+    fmt.Printf("Crossovers: %d\n", crossover_count)
+    fmt.Printf("Best Individual: %s\n", best)
+    fmt.Printf("Fitness: %d\n\n", score)
+
+    // Fill graphic position vector
+    graph_fitness = append(graph_fitness, score)
+
+    // Check if the objective is reached by some individual of this generation
+    if score == gene_number {
+      fmt.Printf("\nObjective reached! Fitness = %d on Generation: %d\n", gene_number, i)
+      break
+    }
+
   }
 
-  // 7 - Best individual
-  best, score := best_individual()
-  fmt.Printf("\nBest Individual: %s with score %d\n\n", best, score)
+  // Generate Graphics
+  pixelgl.Run(graphics)
+
 }

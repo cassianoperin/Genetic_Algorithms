@@ -17,10 +17,12 @@ A genetic algorithm is a search heuristic that is inspired by Charles Darwin's t
 7 - Find the **Best Individual**
 
 TODO:
-- Clean code
 - Create debug option
-- Check if mutation percentage should consider the number of individuals or genes
-- Review use of local and global variables in functions
+- Add evolution over generations graph
+- Add mutation (individuals) over generations graph
+- Add mutation (genes) over generations graph
+- Add crossover over generations graph
+- Mutation is too high when we have too many genes, maybe calculate it automatically to match 0,05
 
 
 # One Max Problem
@@ -30,4 +32,13 @@ Usage:
 - Define the population size, number of genes, number of generations to evolve.
 - Set the parameters for the number of participants on tournament, the crossover (how many individuals from the current generation will pass to the next one) and mutation rate (recommended to be really slow to avoid to start depending on randomically changes to reach the objective).
 
+Requisites:
+`go get github.com/faiface/pixel`
+`go get github.com/faiface/pixel/imdraw`
+`go get github.com/faiface/pixel/pixelgl`
+`go get golang.org/x/image/colornames`
+`go get github.com/faiface/pixel/text`
+`go get github.com/faiface/pixel`
+
+Run:
 `go run one_max.go`
