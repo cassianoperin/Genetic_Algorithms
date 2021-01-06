@@ -107,11 +107,11 @@ func graphics() {
 	imd.Polygon(0)
 
   // Plane Cartesian Zero
-	txtCartesianZero := text.New(pixel.V(40, 25), basicAtlas)
+	txtCartesianZero := text.New(pixel.V(30, 20), basicAtlas)
   txtCartesianZero.Color = colornames.Black
 	fmt.Fprintf(txtCartesianZero, "0")
   // X Generations Label
-  txtCartesianGen := text.New(pixel.V(sizeX -950, 25), basicAtlas)
+  txtCartesianGen := text.New(pixel.V(sizeX -950, 20), basicAtlas)
   txtCartesianGen.Color = colornames.Black
 	fmt.Fprintf(txtCartesianGen, "Generations")
 
@@ -211,7 +211,7 @@ func graphics() {
 	fmt.Fprintf(txtMaxY, strconv.Itoa(gene_number))
 
   // X 100% Label
-	txtMaxX := text.New(pixel.V(sizeX-80, 25), basicAtlas)
+	txtMaxX := text.New(pixel.V(sizeX-80, 20), basicAtlas)
   txtMaxX.Color = colornames.Black
 	fmt.Fprintf(txtMaxX, strconv.Itoa(generations))
 
@@ -219,7 +219,7 @@ func graphics() {
   // ------------- Draw Max Fitness and Generations ------------- //
 
   // Generation result Label
-	txtResultGen := text.New(pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), 25), basicAtlas)
+	txtResultGen := text.New(pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), 38), basicAtlas)
   txtResultGen.Color = colornames.Blue
 	fmt.Fprintf(txtResultGen, strconv.Itoa(len(graph_fitness)))
 
@@ -302,7 +302,7 @@ func graphics() {
     if len(graph_fitness) != generations {
       txtMaxX.Draw(win, pixel.IM.Scaled(txtMaxX.Orig, 1))
     }
-    // Draw result information on graphic
+    // // Draw result information on graphic
     txtResultGen.Draw(win, pixel.IM.Scaled(txtResultGen.Orig, 1))
     txtResultFit.Draw(win, pixel.IM.Scaled(txtResultFit.Orig, 1))
     txtStartY.Draw(win, pixel.IM.Scaled(txtStartY.Orig, 1))
