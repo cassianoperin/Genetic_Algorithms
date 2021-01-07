@@ -23,6 +23,15 @@ The objective here is to generate an individual (composite of 0's or 1's) with a
 :-------------------------:|:-------------------------:
 <img width="430" alt="horizontal" src="https://github.com/cassianoperin/Genetic_Algorithms/blob/main/Images/Onemax_3000.png">  |  <img width="430" alt="vertical" src="https://github.com/cassianoperin/Genetic_Algorithms/blob/main/Images/Onemax_5000.png">
 
+
+# Crack Passwords
+The objective is to discover a password. The unique rule is to inform the program the number of characters of the password (gene_number).
+
+**Population of 200 - 50 char pwd** | **Population of 500 - 100 char pwd**
+:-------------------------:|:-------------------------:
+<img width="430" alt="horizontal" src="https://github.com/cassianoperin/Genetic_Algorithms/blob/main/Images/Password_50.png">  |  <img width="430" alt="vertical" src="https://github.com/cassianoperin/Genetic_Algorithms/blob/main/Images/Password_100.png">
+
+
 Usage:
 - Define the population size, number of genes, number of generations to evolve.
 - Set the parameters for the number of participants on tournament, the crossover (how many individuals from the current generation will pass to the next one) and mutation rate (recommended to be really slow to avoid to start depending on randomically changes to reach the objective).
@@ -43,4 +52,4 @@ Requisites:
 
 Run:
 
-`go run one_max.go`
+`go run one_max.go` or `go run crack_password.go`
