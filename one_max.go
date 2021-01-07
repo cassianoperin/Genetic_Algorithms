@@ -137,7 +137,7 @@ func graphics() {
   fmt.Fprintf(txtLegend2, " (" + strconv.Itoa(slice_pct) + "%%)"  )
 
   // Mutated Genes
-  slice_avg, slice_pct = slice_average(graph_mutation_genes, gene_number)
+  slice_avg, slice_pct = slice_average(graph_mutation_genes, gene_number*population_size)
   txtLegend3 := text.New( pixel.V(600, 745), basicAtlas )
   txtLegend3.Color = colornames.Green
   fmt.Fprintf(txtLegend3, "Mutated Genes:\n" + strconv.Itoa(slice_avg) )
@@ -291,6 +291,12 @@ func graphics() {
 
   // ---------------------- Render Graphics --------------------- //
 	for !win.Closed() {
+
+    // Esc to quit program
+    if win.Pressed(pixelgl.KeyEscape) {
+      break
+    }
+
 		win.Clear(colornames.White)
     // Draw Objects
 		imd.Draw(win)
