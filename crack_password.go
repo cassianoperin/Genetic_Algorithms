@@ -1,0 +1,783 @@
+package main
+
+import (
+  "os"
+  "time"
+  "strings"
+  "sort"
+  "fmt"
+  "math/rand"
+  "strconv"
+  // Graphics
+  "github.com/faiface/pixel"
+  "github.com/faiface/pixel/imdraw"
+  "github.com/faiface/pixel/pixelgl"
+  "golang.org/x/image/colornames"
+	"github.com/faiface/pixel/text"
+  "golang.org/x/image/font/basicfont"
+)
+
+var (
+  // Main variables
+  population_size int = 250
+  gene_number int = 100
+  k = 100 // Tournament size (number of participants)
+  crossover_rate float64 = 0.7
+  mutation_rate float64 = 0.005  // I'm analyzing each gene so the mutation rate should be really small
+  generations int = 500
+  elitism_percentual int = 10  // 10% of population size
+
+  // Other variables
+  // password string = "Th1sP@ssw0rd1sM1neAnd1sSecr3t__Pl3aseTryToDiscover"
+  password string = "Th1sP@ssw0rd1sM1neAnd1sSecr3t__Pl3aseTryToDiscoverTh1sP@ssw0rd1sM1neAnd1sSecr3t__Pl3aseTryToDiscover"
+  letters string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-=+"
+  population []string
+  elitism_individuals int = (elitism_percentual * population_size) / 100
+  debug bool = false
+
+  // Graphics
+  sizeX float64 = 1024
+  sizeY float64 = 768
+  graph_fitness []int
+  graph_mutation_individuals []int
+  graph_mutation_genes []int
+  graph_crossover []int
+  // graph []int
+  pixelY_size float64 = (sizeY -100) / float64(gene_number)
+  pixelX_size float64 = (sizeX -100) / float64(generations)
+
+  // Counters
+  mutation_count, mutation_ind_count int
+)
+
+
+func slice_average(slice []int, total int) (int, int){
+  var (
+    sum int = 0
+    average int = 0
+    percentage int = 0
+  )
+
+  // Sum all values
+  for i:=0 ; i < len(slice) ; i++ {
+    sum += slice[i]
+  }
+
+  // Divide by the size of the slice
+  average = sum / len(slice)
+  // Percentage
+  percentage = (average * 100) / total
+
+  return average, percentage
+}
+
+
+func graphics() {
+
+  imd := imdraw.New(nil)
+
+	cfg := pixelgl.WindowConfig{
+		Title:  "Genetic Algorithms - Password Crack",
+		Bounds: pixel.R(0, 0, sizeX, sizeY),
+		VSync:  true,
+	}
+	win, err := pixelgl.NewWindow(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+  basicAtlas := text.NewAtlas(basicfont.Face7x13, text.ASCII)
+
+
+  // ------------------- Draw Cartesian Plane ------------------- //
+  imd.Color = colornames.Gray
+  // X
+  imd.Push(pixel.V(50, 0), pixel.V(50, sizeY - 40)) // Initial X,Y -> Final X,Y
+  imd.Line(2)
+  // X Arrow
+  imd.Push(pixel.V(sizeX-40, 40))
+  imd.Push(pixel.V(sizeX-40, 60))
+  imd.Push(pixel.V(sizeX-20, 50))
+	imd.Polygon(0)
+  // Y
+  imd.Push(pixel.V(0, 50), pixel.V(sizeX - 40, 50))
+  imd.Line(2)
+  // Y Arrow
+  imd.Push(pixel.V(40, sizeY-40))
+  imd.Push(pixel.V(60, sizeY-40))
+  imd.Push(pixel.V(50, sizeY-20))
+	imd.Polygon(0)
+
+  // Plane Cartesian Zero
+	txtCartesianZero := text.New(pixel.V(30, 20), basicAtlas)
+  txtCartesianZero.Color = colornames.Black
+	fmt.Fprintf(txtCartesianZero, "0")
+  // X Generations Label
+  txtCartesianGen := text.New(pixel.V(sizeX -950, 20), basicAtlas)
+  txtCartesianGen.Color = colornames.Black
+	fmt.Fprintf(txtCartesianGen, "Generations")
+
+
+  // -------------------------- Legend -------------------------- //
+
+  // Legend Label
+  //Fitness
+  txtLegend1 := text.New( pixel.V(140, 745), basicAtlas )
+  txtLegend1.Color = colornames.Blue
+  fmt.Fprintf( txtLegend1, "Fitness:\n" +  strconv.Itoa(graph_fitness[len(graph_fitness)-1]))
+  txtLegend1.Color = colornames.Black
+  fmt.Fprintf(txtLegend1, " of " + strconv.Itoa(gene_number)  )
+
+  // Mutated Individual
+  slice_avg, slice_pct := slice_average(graph_mutation_individuals, population_size)
+  txtLegend2 := text.New( pixel.V(370, 745), basicAtlas )
+  txtLegend2.Color = colornames.Red
+  fmt.Fprintf(txtLegend2, "Mutated Individuals:\n" + strconv.Itoa(slice_avg) )
+  txtLegend2.Color = colornames.Black
+  fmt.Fprintf(txtLegend2, " of " + strconv.Itoa(population_size) )
+  txtLegend2.Color = colornames.Red
+  fmt.Fprintf(txtLegend2, " (" + strconv.Itoa(slice_pct) + "%%)"  )
+
+  // Mutated Genes
+  slice_avg, slice_pct = slice_average(graph_mutation_genes, gene_number*population_size)
+  txtLegend3 := text.New( pixel.V(600, 745), basicAtlas )
+  txtLegend3.Color = colornames.Green
+  fmt.Fprintf(txtLegend3, "Mutated Genes:\n" + strconv.Itoa(slice_avg) )
+  txtLegend3.Color = colornames.Black
+  fmt.Fprintf(txtLegend3, " of " + strconv.Itoa(gene_number*population_size) )
+  txtLegend3.Color = colornames.Green
+  fmt.Fprintf(txtLegend3, " (" + strconv.Itoa(slice_pct) + "%%)"  )
+
+  // Crossover
+  slice_avg, slice_pct = slice_average(graph_crossover, population_size)
+  txtLegend4 := text.New( pixel.V(830, 745), basicAtlas )
+  txtLegend4.Color = colornames.Purple
+  fmt.Fprintf(txtLegend4, "Crossover:\n" + strconv.Itoa(slice_avg) )
+  txtLegend4.Color = colornames.Black
+  fmt.Fprintf(txtLegend4, " of " + strconv.Itoa(population_size) )
+  txtLegend4.Color = colornames.Purple
+  fmt.Fprintf(txtLegend4, " (" + strconv.Itoa(slice_pct) + "%%)"  )
+
+  // Line legend Fitness
+  var x_legend float64 = 100
+  var y_legend float64 = 750
+  for i := 0 ; i < 3 ; i++ {
+    imd.Color = colornames.Blue
+    imd.Push(pixel.V(x_legend, y_legend), pixel.V(x_legend+10, y_legend) )
+    x_legend +=10
+  }
+  imd.Line(2)
+
+  // Line legend Individuals Mutated
+  x_legend +=200
+  for i := 0 ; i < 3 ; i++ {
+    imd.Color = colornames.Red
+    imd.Push(pixel.V(x_legend, y_legend), pixel.V(x_legend+10, y_legend) )
+    x_legend +=10
+  }
+  imd.Line(2)
+
+  // Line legend Genes Mutated
+  x_legend +=200
+  for i := 0 ; i < 3 ; i++ {
+    imd.Color = colornames.Green
+    imd.Push(pixel.V(x_legend, y_legend), pixel.V(x_legend+10, y_legend) )
+    x_legend +=10
+  }
+  imd.Line(2)
+
+  // Line legend Crossover
+  x_legend +=200
+  for i := 0 ; i < 3 ; i++ {
+    imd.Color = colornames.Purple
+    imd.Push(pixel.V(x_legend, y_legend), pixel.V(x_legend+10, y_legend) )
+    x_legend +=10
+  }
+  imd.Line(2)
+
+
+  // ------------- Draw Max Fitness and Generations ------------- //
+
+  // 100% Fitness Line
+  imd.Color = colornames.Lightgrey
+  imd.Push(pixel.V(50, pixelY_size*float64(gene_number)+50), pixel.V(sizeX - 50 - pixelX_size, pixelY_size*float64(gene_number)+50) )
+  imd.Line(1)
+
+  // Draw Generation Result Line
+  imd.Push(pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), 50), pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), pixelY_size*float64(gene_number)+50 ) )
+  imd.Line(1)
+
+  // Y 100% Label
+  txtMaxY := text.New(pixel.V(20, pixelY_size*float64(gene_number)+50-5), basicAtlas)
+  txtMaxY.Color = colornames.Black
+	fmt.Fprintf(txtMaxY, strconv.Itoa(gene_number))
+
+  // X 100% Label
+	txtMaxX := text.New(pixel.V(sizeX-80, 20), basicAtlas)
+  txtMaxX.Color = colornames.Black
+	fmt.Fprintf(txtMaxX, strconv.Itoa(generations))
+
+
+  // ------------- Draw Max Fitness and Generations ------------- //
+
+  // Generation result Label
+	txtResultGen := text.New(pixel.V(50+(pixelX_size*float64(len(graph_fitness)-1)), 38), basicAtlas)
+  txtResultGen.Color = colornames.Blue
+	fmt.Fprintf(txtResultGen, strconv.Itoa(len(graph_fitness)))
+
+  // Fitness Result Label
+  len_graph:= len(graph_fitness)
+  txtResultFit := text.New(pixel.V(sizeX -45, (pixelY_size*float64(graph_fitness[len_graph-1])+50-5)), basicAtlas)
+  txtResultFit.Color = colornames.Blue
+	fmt.Fprintf(txtResultFit, strconv.Itoa(graph_fitness[len_graph-1]))
+
+  // Y Start Label
+  txtStartY := text.New(pixel.V(20, pixelY_size*float64(graph_fitness[0])+50-5), basicAtlas)
+  txtStartY.Color = colornames.Blue
+  text :=  strconv.Itoa(graph_fitness[0])
+  // basicTxt5.Dot.X = basicTxt5.BoundsOf(text).W()
+  fmt.Fprintf(txtStartY, text)
+
+
+  // -------------------- Draw Fitness Graph -------------------- //
+  x := float64(50)
+  y := float64(graph_fitness[0]) * pixelY_size + 50
+  for i := 1 ; i < len(graph_fitness) ; i++ {
+    imd.Color = colornames.Blue
+    // Initial X,Y -> Final X,Y
+    imd.Push(pixel.V(x, y), pixel.V(x+pixelX_size, float64(graph_fitness[i]) * pixelY_size + 50) )
+    x+=pixelX_size
+    y = float64(graph_fitness[i]) * pixelY_size + 50
+  }
+	imd.Line(2)
+
+
+  // // -------------- Draw Individual Mutation Graph -------------- //
+  // x = float64(50)
+  // y = float64(graph_mutation_individuals[0]) * pixelY_size + 50
+  // for i := 1 ; i < len(graph_mutation_individuals) ; i++ {
+  //   imd.Color = colornames.Red
+  //   // Initial X,Y -> Final X,Y
+  //   imd.Push(pixel.V(x, y), pixel.V(x+pixelX_size, float64(graph_mutation_individuals[i]) * pixelY_size + 50) )
+  //   x+=pixelX_size
+  //   y = (float64(graph_mutation_individuals[i]) * pixelY_size) + 50
+  // }
+  // imd.Line(2)
+
+
+  // // ----------------- Draw Gene Mutation Graph ----------------- //
+  // x = float64(50)
+  // y = float64(graph_mutation_genes[0]) * pixelY_size + 50
+  // for i := 1 ; i < len(graph_mutation_genes) ; i++ {
+  //   imd.Color = colornames.Green
+  //   // Initial X,Y -> Final X,Y
+  //   imd.Push(pixel.V(x, y), pixel.V(x+pixelX_size, float64(graph_mutation_genes[i]) * pixelY_size + 50) )
+  //   x+=pixelX_size
+  //   y = (float64(graph_mutation_genes[i]) * pixelY_size) + 50
+  // }
+  // imd.Line(2)
+
+
+  // // ------------------- Draw Crossover Graph ------------------- //
+  // x = float64(50)
+  // y = float64(graph_crossover[0]) * pixelY_size + 50
+  // for i := 1 ; i < len(graph_crossover) ; i++ {
+  //   imd.Color = colornames.Purple
+  //   // Initial X,Y -> Final X,Y
+  //   imd.Push(pixel.V(x, y), pixel.V(x+pixelX_size, float64(graph_crossover[i]) * pixelY_size + 50) )
+  //   x+=pixelX_size
+  //   y = (float64(graph_crossover[i]) * pixelY_size) + 50
+  // }
+  // imd.Line(2)
+
+
+  // ---------------------- Render Graphics --------------------- //
+	for !win.Closed() {
+
+    // Esc to quit program
+    if win.Pressed(pixelgl.KeyEscape) {
+      break
+    }
+
+		win.Clear(colornames.White)
+    // Draw Objects
+		imd.Draw(win)
+    // Cartesian Plane text
+    txtCartesianZero.Draw(win, pixel.IM.Scaled(txtCartesianZero.Orig, 1))
+    txtCartesianGen.Draw(win, pixel.IM.Scaled(txtCartesianGen.Orig, 1))
+    // Draw Max Fitness and Generations
+    txtMaxY.Draw(win, pixel.IM.Scaled(txtMaxY.Orig, 1))
+    if len(graph_fitness) != generations {
+      txtMaxX.Draw(win, pixel.IM.Scaled(txtMaxX.Orig, 1))
+    }
+    // // Draw result information on graphic
+    txtResultGen.Draw(win, pixel.IM.Scaled(txtResultGen.Orig, 1))
+    txtResultFit.Draw(win, pixel.IM.Scaled(txtResultFit.Orig, 1))
+    txtStartY.Draw(win, pixel.IM.Scaled(txtStartY.Orig, 1))
+    // Legend
+    txtLegend1.Draw(win, pixel.IM.Scaled(txtLegend1.Orig, 1))
+    txtLegend2.Draw(win, pixel.IM.Scaled(txtLegend2.Orig, 1))
+    txtLegend3.Draw(win, pixel.IM.Scaled(txtLegend3.Orig, 1))
+    txtLegend4.Draw(win, pixel.IM.Scaled(txtLegend4.Orig, 1))
+
+
+    // Update screen
+		win.Update()
+	}
+}
+
+
+// ------------------- Validate Parameters -------------------- //
+func validate_parameters(pop_size int, competitors int) {
+  // Minimal Population Size size accepted is 2
+  if pop_size % 2 == 1 {
+    fmt.Printf("\nPopulation size should be ODD numbers. Exiting\n")
+    os.Exit(0)
+  }
+
+  // Population Size should be positive
+  if pop_size <= 0 {
+    fmt.Printf("\nPopulation size should be Positive. Exiting\n")
+    os.Exit(0)
+  }
+
+  // K (competitors) must be at least 2
+  if competitors < 2 {
+    fmt.Printf("\nNumber of competitors (k) must be at least 2. Exiting\n")
+    os.Exit(0)
+  }
+}
+
+
+// ------------------- Generate Individuals ------------------- //
+func generate_individuals(gene_nr int, alphabet string) string {
+  var (
+    individual string = ""
+    alphabet_slice []string
+  )
+
+  alphabet_slice = strings.Split(alphabet, "")
+
+  // Initialize rand source
+  rand.Seed(time.Now().UnixNano())
+
+  for i := 0 ; i < gene_nr ; i++ {
+    individual += alphabet_slice[rand.Intn(len(letters))]
+  }
+
+  return individual
+}
+
+
+// --------- Generate the Evaluation of an Individual --------- //
+func fitness_individual(individual string, pwd string) int {
+
+  slice_individual := strings.Split(individual, "")
+  slice_pwd := strings.Split(pwd, "")
+  score := 0
+
+  for i := 0 ; i < len(password) ; i++ {
+    if slice_pwd[i] == slice_individual[i] {
+      score ++
+    }
+  }
+
+  return score
+}
+
+
+// --------- Generate the Evaluation of a Population ---------- //
+func fitness_population(pop []string, pwd string) []int {
+
+  var score []int
+
+  for i := 0 ; i < len(pop) ; i++ {
+    score = append( score, fitness_individual(pop[i], pwd) )
+  }
+
+  return score
+
+}
+
+
+// ------------------------- Elitism -------------------------- //
+func elitism(pop []string, pop_score []int, pop_size int, elitism_number int) ([]string, []string) {
+  var (
+    elite, elite_score, tmp_slice []string
+  )
+
+  // Append score + individual in one slice
+  for i := 0 ; i < pop_size ; i++ {
+    tmp_slice = append( tmp_slice, strconv.Itoa(pop_score[i]) + "," + pop[i] )
+  }
+
+  // Sort slice
+  sort.Strings(tmp_slice)
+
+  // Insert individuals on Elite slice and score on elite_score
+  for i := pop_size -1 ; i > ( pop_size -1 ) - elitism_number ; i-- {
+    tmp_slice := strings.Split(tmp_slice[i],",")
+    elite = append( elite, tmp_slice[1] )       // Individual
+    elite_score = append( elite_score, tmp_slice[0] )   //Score
+  }
+
+  return elite, elite_score
+}
+
+
+// ---------------------- Define Parents ---------------------- //
+func define_parents(pop []string, pop_size int, k int, pwd string) []string {
+  var parents []string
+
+  // Quantity of tournaments is equal to the size of population
+  for tournament := 0 ; tournament < pop_size ; tournament ++ {
+    var (
+      competitors []string
+      score []int
+    )
+
+    // Each tournament, K competitors
+    for i := 0 ; i < k ; i++ {
+      competitors = append( competitors, pop[rand.Intn(pop_size)] )
+    }
+
+    // Calculate the score of K competitors
+    for i := 0 ; i < k ; i++ {
+      score = append( score, fitness_individual(competitors[i], pwd) )
+    }
+
+    bigger := score[0]
+    winner := competitors[0]
+
+    for i := 0 ; i < k ; i++ {
+      if score[i] > bigger {
+        bigger = score[i]
+        winner = competitors[i]
+      }
+    }
+
+    parents = append(parents, winner)
+
+    if debug {
+      fmt.Printf("\tTournament: %d\t Competitors: %s\t Scores: %d\t Winner: %s (%d)\n", tournament, competitors, score, winner, bigger)
+    }
+
+  }
+
+  return parents
+
+}
+
+
+// -------------------- Generate Children --------------------- //
+func generate_children(parents []string, pop_size int, gene_nr int, elitism_number int, elite []string) ([]string, int) {
+  var (
+    father1, father2, child1, child2 string
+    pop_new, child1_slice, child2_slice []string
+    cross_count int = 0
+  )
+
+  if debug {
+    fmt.Printf("\n\tSelected parents:\n")
+  }
+
+  // Define the couples
+  for i := 0 ; i < pop_size / 2 ; i++ {
+
+    randomIndex1 := rand.Intn(len(parents))
+    randomIndex2 := rand.Intn(len(parents))
+    // Ensure that the individuals are not the same
+    for randomIndex1 == randomIndex2 {
+      randomIndex1 = rand.Intn(len(parents))
+      randomIndex2 = rand.Intn(len(parents))
+    }
+
+    father1 = parents[randomIndex1]
+    father2 = parents[randomIndex2]
+
+    if debug {
+      fmt.Printf("\t%d) %s with %s\n", i, father1, father2)
+    }
+
+    // Define if will have crossover (the parents will be copied to next generation)
+    if rand.Float64() < crossover_rate {
+
+      // Split father's values
+      // Father1
+      father1_split := strings.Split(father1,"")
+      // Father2
+      father2_split := strings.Split(father2,"")
+
+      // Child1
+      child1_slice = nil
+      child2_slice = nil
+      for i := 0 ; i < gene_nr ; i ++ {
+        if 0.5 > rand.Float64() {
+          child1_slice = append(child1_slice, father1_split[i])
+        } else {
+          child1_slice = append(child1_slice, father2_split[i])
+        }
+      }
+      // Join child1 string
+      child1 = strings.Join(child1_slice,"")
+
+
+      // Child2
+      for i := 0 ; i < gene_nr ; i ++ {
+        if 0.5 > rand.Float64() {
+          child2_slice = append(child2_slice, father1_split[i])
+        } else {
+          child2_slice = append(child2_slice, father2_split[i])
+        }
+      }
+      // Join child1 string
+      child2 = strings.Join(child2_slice,"")
+
+      if debug {
+        fmt.Printf("\t\tChild1: %s\n\t\tChild2: %s\n", child1, child2)
+      }
+
+      // Put the childs in the new generation
+      pop_new = append(pop_new, child1)
+      pop_new = append(pop_new, child2)
+
+    } else {
+      if debug {
+        fmt.Printf("\t\tCrossover:\n")
+      }
+      pop_new = append(pop_new, father1)
+      pop_new = append(pop_new, father2)
+      if debug {
+        fmt.Printf("\t\tChild1 (Father1): %s\n", father1)
+        fmt.Printf("\t\tChild2 (Father2): %s\n", father2)
+      }
+      cross_count++
+    }
+
+  }
+
+  // Ensure place of elite members on next generation
+  if elitism_number > 0 {
+    if debug {
+      fmt.Printf("\n\tElitism: Regular individual removal:\n")
+    }
+
+    // Remove randomically the number os elite elements
+    for i := 0 ; i < elitism_number ; i++ {
+      random := rand.Intn(len(pop_new))
+      if debug {
+        fmt.Printf("\t\tIndividual %d:\t%s removed randomically from new population\n", i, pop_new[random])
+      }
+
+      // Remove the element at index 'random' from pop_new
+      pop_new[random] = pop_new[len(pop_new)-1] // Copy last element to index 'random'.
+      pop_new[len(pop_new)-1] = ""   // Erase last element (write zero value).
+      pop_new = pop_new[:len(pop_new)-1]   // Truncate slice.
+    }
+
+    // Insert Elite Members on next generation
+    if debug {
+      fmt.Printf("\n\tElitism: Elite individual insertion:\n")
+    }
+    for i := 0 ; i < elitism_number ; i++ {
+      pop_new = append( pop_new, elite[i] )
+      if debug {
+        fmt.Printf("\t\tIndividual %d\t%s inserted to new population\n", i, elite[i])
+      }
+    }
+  }
+
+  return pop_new, cross_count
+}
+
+
+// ------------------------- Mutation ------------------------- //
+func generate_mutation(new_pop []string, pop_size int, gene_nr int, mutation_rate float64, alphabet string) ([]string, int, int) {
+
+  var (
+    new_pop_mutated []string
+    count_genes int = 0
+    count_individuals int = 0
+    alphabet_slice []string
+  )
+
+  alphabet_slice = strings.Split(alphabet, "")
+
+  // For all individuals in population
+  for i := 0 ; i < pop_size ; i ++ {
+
+    var(
+      individual string = ""
+      individual_mutated_flag bool
+    )
+
+    individual = new_pop[i]
+
+    // For each gene, check for mutations
+    for gene := 0 ; gene < gene_nr ; gene ++ {
+
+      // Check if there is a mutation
+      if mutation_rate >= rand.Float64() {
+
+        individual_split := strings.Split(individual,"")
+
+        // Change mutated gene by a new random one
+        individual_split[gene] = alphabet_slice[rand.Intn(len(letters))]
+
+        // Update the mutated individual
+        individual = strings.Join(individual_split,"")
+
+        if debug {
+          fmt.Printf("\tIndividual #%d (%s) mutated on gene %d. New Individual: %s \n", i, new_pop[i], gene, individual)
+        }
+
+        count_genes ++  // Generation genes mutated count
+        individual_mutated_flag = true
+
+      }
+
+    }
+
+    // Generation individuals mutated count
+    if individual_mutated_flag {
+      count_individuals ++
+      individual_mutated_flag = false
+    }
+
+    // Add mutated individuals to a new generation
+    new_pop_mutated = append(new_pop_mutated, individual)
+  }
+
+  return new_pop_mutated, count_genes, count_individuals
+}
+
+
+// // --------------------- Best Individual ---------------------- //
+func best_individual(pwd string) (string, int) {
+
+  var score []int
+
+  // Calculate the score of the latest population
+  score = fitness_population(population, pwd)
+
+  bigger := score[0]
+  winner := population[0]
+
+  for i := 0 ; i < len(score) ; i++ {
+    if score[i] > bigger {
+      bigger = score[i]
+      winner = population[i]
+    }
+  }
+
+  return winner, bigger
+}
+
+
+
+// ------------------------- MAIN FUNCTION ------------------------- //
+func main() {
+
+
+  // --------------------- Validate parameters --------------------- //
+  validate_parameters(population_size, k)
+
+
+  // ----------------- 0 - Generate the population ----------------- //
+  // Generate each individual for population
+  for i := 0 ; i < population_size ; i++ {
+    population = append( population, generate_individuals(gene_number, letters) )
+  }
+
+  // ----------------------- Generations Loop ---------------------- //
+  for i := 0 ; i < generations ; i ++ {
+
+    if debug {
+      fmt.Printf("\n// ---------------------------------- GENERATION: %d ---------------------------------- //\n\n", i)
+    }
+
+    // ----------------------- 1 - Evaluation ------------------------ //
+    if debug {
+      fmt.Printf("1 - Evaluation:\n\n")
+    }
+    population_score := fitness_population(population, password)
+
+    // Show the evaluation of each individual
+    if debug {
+      for i := 0 ; i < population_size ; i ++ {
+        fmt.Printf("\tIndividual %d:\t%s\tEvaluation: %d\n", i, population[i], population_score[i])
+      }
+    }
+
+
+    // ---------------------- 2 - Define Parents --------------------- //
+    if debug {
+      fmt.Printf("\n2 - Define Parents:\n\n")
+    }
+
+    parents := define_parents(population, population_size, k, password)
+
+    if debug {
+      fmt.Printf("\n\tParents: %s\n\n",parents)
+    }
+
+
+    // ------------------------- 3 - Elitism ------------------------- //
+    elite, elite_score := elitism(population, population_score, population_size, elitism_individuals)
+    if debug {
+      fmt.Printf("\n3 - Elitism:\n\n\tNumber of elite members: %d\n\n", elitism_individuals)
+      for i := 0 ; i < elitism_individuals ; i ++ {
+        fmt.Printf("\tIndividual %d:\t%s set for elite with score: %s\n", i, elite[i], elite_score[i] )
+      }
+    }
+
+
+    // -------------------- 4 - Generate Children -------------------- //
+    new_population, crossover_count := generate_children(parents, population_size, gene_number, elitism_individuals, elite)
+    if debug {
+      fmt.Printf("\n4 - Generate Chindren:\n\n\tNew population: %s\n", new_population)
+    }
+
+
+    // ------------------------ 5 - Mutation ------------------------- //
+    new_population, mutation_count, mutation_ind_count = generate_mutation(new_population, population_size, gene_number, mutation_rate, letters)
+    if debug {
+      fmt.Printf("\n5 - Mutation:\n\tMutated Generation: %s\n\n", new_population)
+    }
+
+
+    // ---- 6 - Replace population vector with new population one ---- //
+    population = nil    // Clean ond population
+    for i:= 0 ; i < len(new_population) ; i++ {
+      population = append(population, new_population[i])
+    }
+
+    // -------------------- 7 - Best individual ---------------------- //
+    best, score := best_individual(password)
+    fmt.Printf("\nGENERATION: %d\n", i)
+    fmt.Printf("Mutated individuals: %d\t\tMutated Genes: %d\n", mutation_ind_count, mutation_count)
+    fmt.Printf("Crossovers: %d\n", crossover_count)
+    fmt.Printf("Best Individual: %s\n", best)
+    fmt.Printf("Fitness: %d\n\n", score)
+
+    // Fill Fitness graphic position vector
+    graph_fitness = append(graph_fitness, score)
+    // Fill Individual mutation graphic position vector
+    graph_mutation_individuals = append(graph_mutation_individuals, mutation_ind_count)
+    // Fill Gene mutation graphic position vector
+    graph_mutation_genes = append(graph_mutation_genes, mutation_count)
+    // Fill Crossover graphic position vector
+    graph_crossover = append(graph_crossover, crossover_count)
+    // Check if the objective is reached by some individual of this generation
+
+    if score == gene_number {
+      fmt.Printf("\nObjective reached! Fitness = %d on Generation: %d\n", gene_number, i)
+      break
+    }
+
+  }
+
+  // Generate Graphics
+  pixelgl.Run(graphics)
+
+}
