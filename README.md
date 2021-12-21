@@ -19,7 +19,7 @@ A genetic algorithm is a search heuristic that is inspired by Charles Darwin's t
 # One Max Problem
 The objective here is to generate an individual (composite of 0's or 1's) with all bits 1 evolving the initial population.
 
-**Pop. of 100 reached 3000 1's** | **Pop. of 250 reached 5000 1's 5000**
+**Pop. of 100 reached 3000 1's** | **Pop. of 250 reached 5000 1's**
 :-------------------------:|:-------------------------:
 <img width="430" alt="horizontal" src="https://github.com/cassianoperin/Genetic_Algorithms/blob/main/Images/Onemax_3000.png">  |  <img width="430" alt="vertical" src="https://github.com/cassianoperin/Genetic_Algorithms/blob/main/Images/Onemax_5000.png">
 
