@@ -34,7 +34,7 @@ The objective is to discover a password. The unique rule is to inform the progra
 
 Usage:
 - Define the population size, number of genes, number of generations to evolve.
-- Set the parameters for the number of participants on tournament, the crossover (how many individuals from the current generation will pass to the next one) and mutation rate (recommended to be really slow to avoid to start depending on randomically changes to reach the objective).
+- Set the parameters for the number of participants on tournament, the crossover (how many individuals from the current generation will pass to the next one) and mutation rate (recommended to be really low to avoid to start depending on randomically changes to reach the objective).
 
 Requisites:
 
