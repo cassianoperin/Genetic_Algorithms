@@ -34,36 +34,43 @@ The objective is to discover a password. The unique rule is to inform the progra
 # Next steps
 
 - Make parameters configurable via ini files
-- Compile versions for Windows and Linux
 
 ## Usage:
 
 Just run the executable files.
 
-###  Define the population size, number of genes, number of generations to evolve (hardcoded as variables at this moment on each file)
+###  Define the population size, number of genes, number of generations to evolve:
 
-    Number of generations (Generations)
-    Population size (Population_size)
-    Number of genes (Gene_number)
-    Number of participants of tournament for parents selection (K)
-    Crossover rate (Crossover_rate): How many individuals from the current generation will pass to the next one
-    Mutation rate (Mutation_rate): Recommended to be really low to avoid to start depending on randomically changes to reach the objective
-    Elitism percentual (Elitism_percentual)
+(Hardcoded as variables at this moment on each file)
+
+- Number of generations (Generations)
+- Population size (Population_size)
+- Number of genes (Gene_number)
+- Number of participants of tournament for parents selection (K)
+- Crossover rate (Crossover_rate): How many individuals from the current generation will pass to the next one
+- Mutation rate (Mutation_rate): Recommended to be really low to avoid to start depending on randomically changes to reach the objective
+- Elitism percentual (Elitism_percentual)
 
 ## Compile
 
 ### 1. Mac
 
 - 32 bits:
+
 `env GOOS="darwin" GOARCH="386" go build -ldflags="-s -w" one_max.go`
+
 `env GOOS="darwin" GOARCH="386" go build -ldflags="-s -w" crack_password.go`
 
 - 64 bits:
+
 `env GOOS="darwin" GOARCH="amd64" go build -ldflags="-s -w" one_max.go`
+
 `env GOOS="darwin" GOARCH="amd64" go build -ldflags="-s -w" crack_password.go`
 
 #### Compress binaries
+
 `brew install upx`
+
 `upx <binary_file>`
 
 ### 2. Linux
@@ -77,11 +84,13 @@ Instructions to build using Ubuntu.
 #### Build:
 
 - 32 bits:
+
 `env GOOS="linux" GOARCH="386" go build -ldflags="-s -w" one_max.go`
 
 `env GOOS="linux" GOARCH="386" go build -ldflags="-s -w" crack_password.go`
 
 - 64 bits:
+
 `env GOOS="linux" GOARCH="amd64" go build -ldflags="-s -w" one_max.go`
 
 `env GOOS="linux" GOARCH="amd64" go build -ldflags="-s -w" crack_password.go`
@@ -121,19 +130,3 @@ GO allows to create a Windows executable file using a MacOS:
 `brew install upx`
 
 `upx <binary_file>`
-
-
-
-### Requisites:
-
-`go get github.com/faiface/pixel`
-
-`go get github.com/faiface/pixel/imdraw`
-
-`go get github.com/faiface/pixel/pixelgl`
-
-`go get golang.org/x/image/colornames`
-
-`go get github.com/faiface/pixel/text`
-
-`go get github.com/faiface/pixel`
