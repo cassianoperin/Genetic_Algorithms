@@ -31,12 +31,96 @@ The objective is to discover a password. The unique rule is to inform the progra
 :-------------------------:|:-------------------------:
 <img width="430" alt="horizontal" src="https://github.com/cassianoperin/Genetic_Algorithms/blob/main/Images/Password_50.png">  |  <img width="430" alt="vertical" src="https://github.com/cassianoperin/Genetic_Algorithms/blob/main/Images/Password_100.png">
 
+# Next steps
 
-Usage:
-- Define the population size, number of genes, number of generations to evolve.
-- Set the parameters for the number of participants on tournament, the crossover (how many individuals from the current generation will pass to the next one) and mutation rate (recommended to be really low to avoid to start depending on randomically changes to reach the objective).
+- Make parameters configurable via ini files
+- Compile versions for Windows and Linux
 
-Requisites:
+## Usage:
+
+Just run the executable files.
+
+###  Define the population size, number of genes, number of generations to evolve (hardcoded as variables at this moment on each file)
+
+    Number of generations (Generations)
+    Population size (Population_size)
+    Number of genes (Gene_number)
+    Number of participants of tournament for parents selection (K)
+    Crossover rate (Crossover_rate): How many individuals from the current generation will pass to the next one
+    Mutation rate (Mutation_rate): Recommended to be really low to avoid to start depending on randomically changes to reach the objective
+    Elitism percentual (Elitism_percentual)
+
+## Compile
+
+### 1. Mac
+
+- 32 bits:
+`env GOOS="darwin" GOARCH="386" go build -ldflags="-s -w" one_max.go`
+`env GOOS="darwin" GOARCH="386" go build -ldflags="-s -w" crack_password.go`
+
+- 64 bits:
+`env GOOS="darwin" GOARCH="amd64" go build -ldflags="-s -w" one_max.go`
+`env GOOS="darwin" GOARCH="amd64" go build -ldflags="-s -w" crack_password.go`
+
+#### Compress binaries
+`brew install upx`
+`upx <binary_file>`
+
+### 2. Linux
+
+Instructions to build using Ubuntu.
+
+#### Install requisites:
+
+`sudo apt install pkg-config libgl1-mesa-dev licxi-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev mesa-utils build-essential xorg-dev upx`
+
+#### Build:
+
+- 32 bits:
+`env GOOS="linux" GOARCH="386" go build -ldflags="-s -w" one_max.go`
+`env GOOS="linux" GOARCH="386" go build -ldflags="-s -w" crack_password.go`
+
+- 64 bits:
+`env GOOS="linux" GOARCH="amd64" go build -ldflags="-s -w" one_max.go`
+`env GOOS="linux" GOARCH="amd64" go build -ldflags="-s -w" crack_password.go`
+
+#### Compress binaries:
+
+`upx <binary_file>
+
+### 3. Windows
+
+GO allows to create a Windows executable file using a MacOS:
+
+#### Install mingw-w64 (support the GCC compiler on Windows systems):
+
+`brew install mingw-w64`
+
+#### Compile:
+
+- 32 bits:
+
+`env GOOS="windows" GOARCH="386"   CGO_ENABLED="1" CC="i686-w64-mingw32-gcc"   go build -ldflags="-s -w"`
+
+`env GOOS="windows" GOARCH="386" go build -ldflags="-s -w" one_max.go`
+`env GOOS="windows" GOARCH="386" go build -ldflags="-s -w" crack_password.go`
+
+- 64 bits:
+
+`env GOOS="windows" GOARCH="amd64" go build -ldflags="-s -w" one_max.go`
+`env GOOS="windows" GOARCH="amd64" go build -ldflags="-s -w" crack_password.go`
+
+* If you receive the message when running the executable, you need to ensure that the video drivers supports OpenGL (or the virtual driver in the case of virtualization).
+
+* If you receive this message : "APIUnavailable: WGL: The driver does not appear to support OpenGL", please update your graphics driver os just copy the Mesa3D library from https://fdossena.com/?p=mesa/index.frag  (opengl32.dll) to the executable folder.
+
+#### Compress binaries
+`brew install upx`
+`upx <binary_file>`
+
+
+
+### Requisites:
 
 `go get github.com/faiface/pixel`
 
@@ -49,7 +133,3 @@ Requisites:
 `go get github.com/faiface/pixel/text`
 
 `go get github.com/faiface/pixel`
-
-Run:
-
-`go run one_max.go` or `go run crack_password.go`
