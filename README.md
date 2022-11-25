@@ -78,10 +78,12 @@ Instructions to build using Ubuntu.
 
 - 32 bits:
 `env GOOS="linux" GOARCH="386" go build -ldflags="-s -w" one_max.go`
+
 `env GOOS="linux" GOARCH="386" go build -ldflags="-s -w" crack_password.go`
 
 - 64 bits:
 `env GOOS="linux" GOARCH="amd64" go build -ldflags="-s -w" one_max.go`
+
 `env GOOS="linux" GOARCH="amd64" go build -ldflags="-s -w" crack_password.go`
 
 #### Compress binaries:
@@ -100,22 +102,24 @@ GO allows to create a Windows executable file using a MacOS:
 
 - 32 bits:
 
-`env GOOS="windows" GOARCH="386"   CGO_ENABLED="1" CC="i686-w64-mingw32-gcc"   go build -ldflags="-s -w"`
+`env GOOS="windows" GOARCH="386" CGO_ENABLED="1" CC="i686-w64-mingw32-gcc" go build -ldflags="-s -w" one_max.go`
 
-`env GOOS="windows" GOARCH="386" go build -ldflags="-s -w" one_max.go`
-`env GOOS="windows" GOARCH="386" go build -ldflags="-s -w" crack_password.go`
+`env GOOS="windows" GOARCH="386" CGO_ENABLED="1" CC="i686-w64-mingw32-gcc" go build -ldflags="-s -w" crack_password.go`
 
 - 64 bits:
 
-`env GOOS="windows" GOARCH="amd64" go build -ldflags="-s -w" one_max.go`
-`env GOOS="windows" GOARCH="amd64" go build -ldflags="-s -w" crack_password.go`
+`env GOOS="windows" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-w64-mingw32-gcc" go build -ldflags="-s -w" one_max.go`
+
+`env GOOS="windows" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-w64-mingw32-gcc" go build -ldflags="-s -w" crack_password.go`
 
 * If you receive the message when running the executable, you need to ensure that the video drivers supports OpenGL (or the virtual driver in the case of virtualization).
 
 * If you receive this message : "APIUnavailable: WGL: The driver does not appear to support OpenGL", please update your graphics driver os just copy the Mesa3D library from https://fdossena.com/?p=mesa/index.frag  (opengl32.dll) to the executable folder.
 
 #### Compress binaries
+
 `brew install upx`
+
 `upx <binary_file>`
 
 
